@@ -115,7 +115,10 @@ def create(
             console=console
         ) as progress:
             task = progress.add_task(f"[blue]Generating content for {filename}[/blue]...", total=None)
-            content = agent.create_file_content(description, reference_files=reference_files)
+            content = agent.create_file_content(
+                description=f"Create file '{filename}': {description}",
+                reference_files=reference_files
+            )
             progress.update(task, completed=True)
         
         with open(filename, 'w', encoding='utf-8') as f:

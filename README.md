@@ -19,7 +19,7 @@ Filepilot is an AI-powered tool for creating, analyzing, and modifying files usi
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/your-username/filepilot.git
+git clone https://github.com/joaompinto/filepilot.git
 cd filepilot
 ```
 
@@ -42,7 +42,7 @@ This will display the available commands and options. Here are a few examples:
 python filepilot.py create README.md "Generate a README file for the Filepilot project"
 
 # Analyze an existing file
-python filepilot.py info filepilot.py
+python filepilot.py analyze filepilot.py
 
 # Modify an existing file
 python filepilot.py change filepilot.py "Add a new feature to handle CSV files"
