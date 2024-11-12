@@ -3,12 +3,12 @@ import json
 import re
 import traceback
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from anthropic import Anthropic
 from anthropic.types import MessageParam
 import shutil
 from rich.console import Console
-from .changemanager import ChangeManager  # Add this import
+from .changemanager import ChangeManager
 
 console = Console()
 verbose_mode = False
@@ -114,19 +114,84 @@ class APIAgent:
         except Exception as e:
             raise Exception(f"Error processing file: {traceback.format_exc()}")
 
-    def create_file_content(self, description: str, max_tokens: int = 4000) -> str:
-        """Generate file content based on description using Claude API."""
-        prompt = f"""Create a file based on this description: {description}
-
-Requirements:
-- Generate only the file content, no explanations or comments outside the code
-- Include helpful inline comments where appropriate
-- Follow best practices for the file type
-- Make the code production-ready and well-structured"""
+    def create_file_content(
+        self, 
+        description: str, 
+        reference_files: Optional[List[str]] = None,
+        reference_content: Optional[Union[str, List[str]]] = None,
+        max_tokens: int = 4000
+    ) -> str:
+        """Generate file content based on description using Claude API.
+        
+        Args:
+            description (str): Description of the file to create
+            reference_files (List[str], optional): List of file paths to use as reference
+            reference_content (Union[str, List[str]], optional): Direct content to use as reference
+            max_tokens (int): Maximum tokens in response
+            
+        Returns:
+            str: Generated file content
+            
+        Raises:
+            Exception: If there's an error processing reference files or making the API request
+        """
+        context_sections = []
+        
+        # Process reference files if provided
+        if reference_files:
+            for ref_file in reference_files:
+                try:
+                    with open(ref_file, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                        context_sections.append(f"Reference file '{ref_file}':\n{content}")
+                except Exception as e:
+                    console.print(f"[yellow]Warning:[/yellow] Could not read reference file '{ref_file}': {str(e)}")
+        
+        # Process reference content if provided
+        if reference_content:
+            if isinstance(reference_content, str):
+                context_sections.append(f"Reference content:\n{reference_content}")
+            elif isinstance(reference_content, list):
+                for idx, content in enumerate(reference_content, 1):
+                    context_sections.append(f"Reference content #{idx}:\n{content}")
+        
+        # Build the complete prompt
+        prompt_parts = [
+            f"Create a file based on this description: {description}",
+            "Requirements:",
+            "- Generate only the file content, no explanations or comments outside the code",
+            "- Include helpful inline comments where appropriate",
+            "- Follow best practices for the file type",
+            "- Make the code production-ready and well-structured",
+        ]
+        
+        if context_sections:
+            prompt_parts.append("\nReference materials for context:")
+            prompt_parts.extend(context_sections)
+            prompt_parts.append("\nUse the reference materials above as inspiration and context for the new file while following the description requirements.")
+        
+        prompt = "\n".join(prompt_parts)
+        
+        if verbose_mode:
+            console.print("\n[blue]Generated Prompt:[/blue]")
+            console.print(prompt)
         
         return self.request(prompt, max_tokens=max_tokens)
 
     def modify_file_content(self, content: str, instruction: str, max_tokens: Optional[int] = None) -> str:
+        """Modify file content based on instruction using Claude API.
+        
+        Args:
+            content (str): Original file content to modify
+            instruction (str): Instruction describing desired changes
+            max_tokens (int, optional): Maximum tokens in response
+            
+        Returns:
+            str: Modified file content
+            
+        Raises:
+            Exception: If there's an error processing the changes or making the API request
+        """
         if max_tokens is None:
             max_tokens = self.max_output_tokens - self.token_headroom
 
@@ -142,5 +207,3 @@ Requirements:
             print("Error parsing edit instructions:")
             print(traceback.format_exc())
             return response.strip()
-
-    # Remove _apply_edit_instructions and apply_changes_to_preview methods as they're now in ChangeManager

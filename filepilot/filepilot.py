@@ -38,12 +38,7 @@ def main(verbose: bool = typer.Option(False, "--verbose", "-v",
     pass
 
 @app.command()
-def hello(name: str):
-    """Say hello to NAME."""
-    typer.echo(f"Hello {name}")
-
-@app.command()
-def info(filename: str):
+def analyze(filename: str):
     """Get a concise summary of the file's purpose."""
     try:
         if not os.path.exists(filename):
@@ -92,7 +87,11 @@ def status():
         raise typer.Exit(1)
 
 @app.command()
-def create(filename: str, description: str):
+def create(
+    filename: str, 
+    description: str,
+    from_files: str = typer.Option(None, "--from", "-f", help="Comma-separated list of reference files to consider")
+):
     """Create a new file using AI-generated content based on description."""
     try:
         if os.path.exists(filename):
@@ -100,6 +99,15 @@ def create(filename: str, description: str):
             raise typer.Exit(1)
             
         agent = APIAgent()
+        reference_files = []
+        
+        # Process reference files if provided
+        if from_files:
+            reference_files = [f.strip() for f in from_files.split(",")]
+            for ref_file in reference_files:
+                if not os.path.exists(ref_file):
+                    console.print(f"[red]Error:[/red] Reference file '{ref_file}' does not exist")
+                    raise typer.Exit(1)
         
         with Progress(
             SpinnerColumn(),
@@ -107,7 +115,7 @@ def create(filename: str, description: str):
             console=console
         ) as progress:
             task = progress.add_task(f"[blue]Generating content for {filename}[/blue]...", total=None)
-            content = agent.create_file_content(description)
+            content = agent.create_file_content(description, reference_files=reference_files)
             progress.update(task, completed=True)
         
         with open(filename, 'w', encoding='utf-8') as f:

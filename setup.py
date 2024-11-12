@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
     name="filepilot",
     version="0.1.0",
-    description="AI-powered tool for creating, analyzing, and modifying files using Natural Language Processing",
+    description="AI-powered tool for creating, analyzing, and modifying files using natural language",
     author="João Pinto",
     packages=find_packages(include=['filepilot', 'filepilot.*']),
     package_data={'filepilot': ['py.typed']},
