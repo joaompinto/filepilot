@@ -5,16 +5,22 @@ setup(
     version="0.1.0",
     description="AI-powered tool for creating, analyzing, and modifying files using natural language",
     author="João Pinto",
-    packages=find_packages(include=['filepilot', 'filepilot.*']),
-    package_data={'filepilot': ['py.typed']},
+    packages=find_packages(),
+    package_data={
+        'filepilot': [
+            'py.typed',
+            '*.py',
+            'cli/*.py'
+        ]
+    },
     install_requires=[
-        "typer>=0.9.0",
-        "rich>=13.0.0",
-        "anthropic>=0.5.0",
+        "anthropic",
+        "rich",
+        "typer[all]"  # Added typer dependency with all extras
     ],
     entry_points={
         "console_scripts": [
-            "filepilot=filepilot.filepilot:app",
+            "filepilot=filepilot.__main__:main",
         ],
     },
     python_requires=">=3.8",

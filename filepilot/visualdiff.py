@@ -2,10 +2,7 @@ import difflib
 import sys
 from typing import List, Tuple, Optional
 from rich.console import Console
-from rich.table import Table
-from rich.panel import Panel
 from rich.text import Text
-from rich.box import SQUARE
 
 class VisualDiff:
     def __init__(self, context_lines: int = 3):
@@ -63,47 +60,37 @@ class VisualDiff:
             
         return changes
 
-    def visualize_diff(self, file1: str, file2: str):
-        """Display a visual diff between two files showing only changed sections."""
+    def visualize_diff(self, file1: str, file2: str) -> int:
+        """Display a visual diff between two files showing only changed sections.
+        
+        Returns:
+            int: Number of actual changes (excluding context lines)
+        """
         text1 = self.read_file(file1)
         text2 = self.read_file(file2)
         changes = self.get_changes(text1, text2)
         
-        # Create table for changes
-        table = Table(
-            title="File Changes",
-            box=SQUARE,
-            show_header=True,
-            header_style="bold cyan",
-            show_lines=False,
-            padding=(0, 1)
-        )
-        
-        table.add_column("Line", style="dim", justify="right")
-        table.add_column("Changes")
-        
-        in_change_block = False
+        change_count = 0
         
         for line_num, old, new, is_different in changes:
+            if is_different:
+                change_count += 1
+
             # Handle ellipsis
             if line_num == -1:
-                table.add_row("...", "...")
+                self.console.print("...")
                 continue
                 
             # Format the line display
             if is_different:
                 if not old:
-                    table.add_row(str(line_num), Text(f"+ {new}", style="green"))
+                    self.console.print(f"{line_num:4d} + {new}", style="green")
                 elif not new:
-                    table.add_row(str(line_num), Text(f"- {old}", style="red"))
-                    table.add_row("", Text(f"+ {new}", style="green"))
+                    self.console.print(f"{line_num:4d} - {old}", style="red")
                 else:
-                    table.add_row(str(line_num), Text(f"- {old}", style="red"))
-                    table.add_row("", Text(f"+ {new}", style="green"))
+                    self.console.print(f"{line_num:4d} - {old}", style="red")
+                    self.console.print(f"{line_num:4d} + {new}", style="green")
             else:
-                table.add_row(str(line_num), Text(f"  {old}"))
-
+                self.console.print(f"{line_num:4d}   {old}")
         
-        # Print the changes
-        self.console.print(table)
-    
+        return change_count

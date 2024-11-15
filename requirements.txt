@@ -1,0 +1,10 @@
+# Main dependencies
+anthropic==0.3.2 # Anthropic's official Python SDK
+typer==0.7.0 # Library for building command-line interfaces
+rich==13.3.2 # Rich text and beautiful formatting in the terminal
+python-dotenv==0.21.1 # Used for loading environment variables
+
+# Utilities
+requests==2.28.2 # For making HTTP requests
+difflib==0.7.2 # Utilities for computing differences between sequences
+pathlib==1.0.1 # Object-oriented filesystem paths
