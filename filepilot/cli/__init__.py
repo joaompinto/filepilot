@@ -14,5 +14,6 @@ from .analyze import analyze
 from .create import create
 from .change import change
 from .status import status
+from .update import update
 
-__all__ = ['app', 'console', 'analyze', 'create', 'change', 'status']
+__all__ = ['app', 'console', 'analyze', 'create', 'change', 'status', 'update']

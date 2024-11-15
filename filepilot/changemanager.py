@@ -1,30 +1,3 @@
-"""Change Manager Protocol
-
-Changes are described using XML-like tags:
-
-<insert n>       # insert at line n
-content to add    # can be multiple lines
-</insert>
-
-<delete n>       # single line delete
-</delete>
-
-<delete n-m>     # range delete
-</delete>
-
-Example:
-<insert 5>
-def new_method():
-    return True
-</insert>
-
-<delete 10>  # deletes line 10
-</delete>
-
-<delete 15-20>  # deletes lines 15 through 20
-</delete>
-"""
-
 import os
 import shutil
 import re
@@ -34,7 +7,7 @@ from rich.console import Console
 from rich.prompt import Confirm
 from rich.table import Table
 from typing import List, Dict, Any
-from .visualdiff import VisualDiff
+from .syntaxdiff import SyntaxDiff
 
 class NoChangesFoundError(Exception):
     """Raised when no change instructions were found in the response."""
@@ -43,7 +16,7 @@ class NoChangesFoundError(Exception):
 class ChangeManager:
     def __init__(self):
         self.console = Console()
-        self.visual_diff = VisualDiff()
+        self.visual_diff = SyntaxDiff()
         self.original_file = None
         # Get verbose setting from environment
         self.verbose = os.getenv('VERBOSE_MODE', '').lower() in ('true', '1', 'yes')
@@ -114,62 +87,86 @@ class ChangeManager:
                 pass  # Ignore errors during cleanup
 
     def generate_change_prompt(self, content: str, instruction: str, target_name: str = None, filename: str = None) -> str:
-        """Generate prompt for requesting file changes from AI."""
-        import uuid
+        """Generate a prompt for Claude that follows the XML format for changes."""
+        display_filename = filename or target_name or "file"
         
-        file_marker = f"###FILEPILOT_CONTENT_{uuid.uuid4().hex[:8]}###"
-        escaped_content = content.strip().replace(file_marker, f"\\{file_marker}")
-        
-        display_name = filename or target_name or "the file"
-        
-        # Prefix each line with its line number
-        numbered_content = "\n".join(f"{i+1}: {line}" for i, line in enumerate(escaped_content.split('\n')))
+        prompt = f"""<inputfile>
+<filename>{display_filename}</filename>
+<content>
+{content}
+</content>
+</inputfile>
 
-        return f"""<file_content>
-{numbered_content}
-</file_content>
+Please make the following changes:
+{instruction}"""
 
-<filename>
-{display_name}
-</filename>
-
-<change_description>
-{instruction}
-</change_description>"""
+        return prompt
 
     def apply_edit_instructions_to_content(self, content: str, instructions: List[Dict[str, Any]]) -> str:
-        """Apply edit instructions to content."""
-        lines = content.rstrip('\n').split('\n')
+        """Apply edit instructions to content in forward order."""
+        # Store whether original content had trailing newline
+        had_trailing_newline = content.endswith('\n')
+        # Remove trailing whitespace but preserve line endings
+        lines = content.rstrip().split('\n')
         
         if self.verbose:
             self.console.print(f"\nFile has {len(lines)} lines")
-            self.console.print(f"Applying {len(instructions)} instructions in sorted order:\n")
-            self.display_instructions_table(instructions)
+            self.console.print(f"Applying {len(instructions)} instructions\n")
             
+        # Process instructions in forward order    
         for instr in instructions:
-            action = instr.get('action')
-            text = instr.get('text')
+            action = instr['action']
             
             try:
-                if action == 'remove':
-                    lines = [line for line in lines if text not in line]
+                if action == 'replace':
+                    if self.verbose:
+                        self.console.print(f"\n[yellow]Action:[/yellow] {action}")
+                        self.console.print("[green]Replacing entire file:[/green]")
+                        self.console.print(f"[green]+ {instr['content']}[/green]")
+                    # Return replaced content with newline only if original had one
+                    return instr['content'].rstrip() + ('\n' if had_trailing_newline else '')
+                    
+                elif action == 'delete':
+                    start = instr['start'] - 1  # Convert to 0-based index
+                    end = instr['end']  # end is inclusive
+                    
+                    if self.verbose:
+                        self.console.print(f"\n[yellow]Action:[/yellow] {action}")
+                        self.console.print(f"Range: {start+1}-{end}")
+                        deleted_lines = lines[start:end]
+                        self.console.print("[red]Deleted content:[/red]")
+                        for line in deleted_lines:
+                            self.console.print(f"[red]- {line}[/red]")
+                    
+                    lines = lines[:start] + lines[end:]
                     
                 elif action == 'insert':
-                    new_lines = instr.get('content', '').rstrip('\n').split('\n')
-                    for i, line in enumerate(lines):
-                        if text in line:
-                            lines = lines[:i+1] + new_lines + lines[i+1:]
-                            break
+                    start = instr['start'] - 1 if 'start' in instr else len(lines)
                     
-                elif action == 'replace':
-                    new_lines = instr.get('content', '').rstrip('\n').split('\n')
-                    lines = [line.replace(text, '\n'.join(new_lines)) if text in line else line for line in lines]
+                    if self.verbose:
+                        self.console.print(f"\n[yellow]Action:[/yellow] {action}")
+                        self.console.print("[green]Inserting:[/green]")
+                        self.console.print(f"[green]+ {instr['content']}[/green]")
+                    
+                    new_lines = instr['content'].split('\n')
+                    lines = lines[:start] + new_lines + lines[start:]
+                    
+                elif action == 'topins':
+                    if self.verbose:
+                        self.console.print(f"\n[yellow]Action:[/yellow] {action}")
+                        self.console.print("[green]Top inserting:[/green]")
+                        self.console.print(f"[green]+ {instr['content']}[/green]")
+                    
+                    new_lines = instr['content'].split('\n')
+                    lines = new_lines + lines
                     
             except Exception as e:
                 self.console.print(f"[yellow]Warning:[/yellow] {str(e)}")
                 continue
                 
-        return '\n'.join(lines) + '\n'
+        result = '\n'.join(lines)
+        # Add back trailing newline if original had one
+        return result + ('\n' if had_trailing_newline else '')
 
     def apply_edit_instructions_to_file(self, filename: str, instructions: List[Dict[str, Any]]) -> None:
         """Apply edit instructions to a file."""
@@ -202,7 +199,7 @@ class ChangeManager:
             if action == 'insert':
                 content = f"[green]+ {instr.get('content', '')}[/green]"
             elif action == 'delete':
-                content = f"[red]- {instr.get('count')} lines[/red]"
+                content = f"[red]- {instr['count']} lines[/red]"
             else:
                 content = ""  # Handle cases where content is not applicable
                 
@@ -212,61 +209,59 @@ class ChangeManager:
         self.console.print(table)
         self.console.print()
 
-    def display_changes_summary(self, instructions: List[Dict[str, Any]], total_lines: int) -> None:
-        """Display a human-readable summary of the changes."""
-        deletions = len([i for i in instructions if i['action'] == 'remove'])
-        insertions = len([i for i in instructions if i['action'] == 'insert'])
-        affected_texts = sorted(set([i['text'] for i in instructions]))
-        
-        self.console.print("\n[bold]Change Summary:[/bold]")
-        self.console.print(f"Total lines in file: {total_lines}")
-        self.console.print(f"Changes to be made: {len(instructions)}")
-        self.console.print(f"  - Deletions: {deletions}")
-        self.console.print(f"  - Insertions: {insertions}")
-        self.console.print(f"Texts affected: {', '.join(affected_texts)}\n")
-
-    def parse_edit_instructions(self, response: str) -> List[Dict[str, Any]]:
-        """Parse edit instructions from response text."""
+    def parse_edit_instructions(self, response: str, original_content: str) -> List[Dict[str, Any]]:
+        """Parse edit instructions from response text looking for complete file replacements."""
         instructions = []
-        if self.verbose:
-            self.console.print("\n[bold]Change Instructions:[/bold]")
-            self.console.print(response)
-
-        # Parse modifications tags
-        modifications_pattern = r'<modifications>(.*?)</modifications>'
-        modifications_match = re.search(modifications_pattern, response, re.DOTALL)
-        if not modifications_match:
-            raise NoChangesFoundError("No valid change instructions found")
-
-        modifications_content = modifications_match.group(1)
-
-        # Parse individual change tags
-        change_pattern = r'<change\s+type="(remove|insert|replace)">\s*<text>(.*?)</text>\s*<content>(.*?)</content>\s*</change>'
-        for match in re.finditer(change_pattern, modifications_content, re.DOTALL):
-            action = match.group(1)
-            text = match.group(2).strip()
-            content = match.group(3).strip()
-
-            if not text:
-                if self.verbose:
-                    self.console.print(f"[yellow]Warning:[/yellow] Invalid text for change")
+        in_file_section = False
+        in_content_section = False
+        filename = None
+        content_lines = []
+        
+        for line in response.splitlines():
+            stripped_line = line.strip()
+            
+            if '<outputfile>' in stripped_line:
+                in_file_section = True
+                content_lines = []
                 continue
-
-            # Handle multi-line content with line numbers
-            if action == 'replace' and '\n' in content:
-                content_lines = content.split('\n')
-                content = '\n'.join(line.split(': ', 1)[1] if ': ' in line else line for line in content_lines)
-
-            instructions.append({
-                'action': action,
-                'text': text,
-                'content': content
-            })
+            elif '</outputfile>' in stripped_line:
+                if filename and content_lines:
+                    instructions.append({
+                        'action': 'replace',
+                        'content': '\n'.join(content_lines)
+                    })
+                in_file_section = False
+                in_content_section = False
+                filename = None
+                content_lines = []
+                continue
+                
+            if not in_file_section:
+                continue
+                
+            if '<filename>' in stripped_line and '</filename>' in stripped_line:
+                filename = stripped_line[stripped_line.find('<filename>')+10:stripped_line.find('</filename>')].strip()
+                continue
+                
+            if '<content>' in stripped_line:
+                in_content_section = True
+                continue
+            elif '</content>' in stripped_line:
+                in_content_section = False
+                continue
+            
+            if in_content_section:
+                content_lines.append(line)
 
         if not instructions:
             raise NoChangesFoundError("No valid change instructions found")
 
         if self.verbose:
-            self.display_changes_summary(instructions, 0)
+            self.console.print("\n[bold]Parsed Instructions:[/bold]")
+            for instr in instructions:
+                self.console.print(f"\n[yellow]Action:[/yellow] {instr['action']}")
+                self.console.print("[green]New content:[/green]")
+                for line in instr['content'].splitlines():
+                    self.console.print(f"[green]+ {line}[/green]")
 
         return instructions

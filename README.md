@@ -3,18 +3,27 @@ Here is a README file with helpful icons for the Filepilot project:
 # Filepilot 🚀✨
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Python Version](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/)
+[![Python Version](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)]()
 
-Filepilot is an AI-powered tool for creating, analyzing, and modifying files using Natural Language Processing (NLP). It provides a command-line interface (CLI) for interacting with Anthropic's Claude AI assistant, leveraging its capabilities to generate file content, analyze existing files, and apply edits based on natural language instructions.
+Filepilot is an AI-powered tool for creating, analyzing, and modifying files using Natural Language Processing (NLP). It provides a command-line interface (CLI) for interacting with Anthropic's Claude AI assistant using the Claude-3-5-Sonnet model, leveraging its capabilities to generate file content, analyze existing files, and apply edits based on natural language instructions.
 
 ## Features ✨
 
-- 🆕 **Create**: Generate new files with AI-generated content based on a description and optional reference files.
-- 🔍 **Analyze**: Get a concise summary of a file's main purpose using NLP.
-- 🚀 **Modify**: Edit existing files by providing natural language instructions, with a visual diff for reviewing changes.
-- 🤖 **Powered by Claude**: Harness the power of Anthropic's Claude AI to streamline file operations.
+- 🆕 **Create**: Generate new files with AI-generated content based on a description and optional reference files 
+- 🔍 **Analyze**: Get a concise summary of a file's main purpose using NLP
+- 🚀 **Modify**: Edit existing files by providing natural language instructions, with syntax-highlighted visual diffs for reviewing changes
+- 🤖 **Powered by Claude-3**: Harness the power of Anthropic's Claude-3-5-Sonnet model to streamline file operations
 
 ## Installation 🛠️
+
+You can install Filepilot using pip:
+
+```bash
+pip install filepilot
+```
+
+Or install from source:
 
 1. Clone the repository:
 
@@ -29,23 +38,40 @@ cd filepilot
 pip install -r requirements.txt
 ```
 
-## Usage 📖
+3. Set up your Anthropic API key:
 
 ```bash
-python filepilot.py --help
+export ANTHROPIC_API_KEY="your-api-key-here"
+```
+
+## Usage 📖
+
+The package provides a command-line interface:
+
+```bash
+filepilot --help
 ```
 
 This will display the available commands and options. Here are a few examples:
 
 ```bash
 # Create a new file
-python filepilot.py create README.md "Generate a README file for the Filepilot project"
+filepilot create README.md "Generate a README file for the Filepilot project"
 
 # Analyze an existing file
-python filepilot.py analyze filepilot.py
+filepilot analyze filepilot.py
 
 # Modify an existing file
-python filepilot.py change filepilot.py "Add a new feature to handle CSV files"
+filepilot change filepilot.py "Add a new feature to handle CSV files"
+
+# Update an existing file from analyzing reference files
+filepilot update requirements.txt app.py
+```
+
+For detailed diffs and verbose output, you can enable verbose mode:
+
+```bash
+export VERBOSE_MODE=true
 ```
 
 ## Contributing 🤝

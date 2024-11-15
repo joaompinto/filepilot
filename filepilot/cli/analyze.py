@@ -10,12 +10,20 @@ from . import console, app
 # Check verbose mode from environment
 VERBOSE = os.getenv('VERBOSE_MODE', '').lower() in ('true', '1', 'yes')
 
+SYSTEM_PROMPT = """You are a software developer. Analyze the provided file and provide a concise summary of its purpose.
+
+Important rules:
+1. Focus only on what the file does, without listing components
+2. Keep the summary between 2-10 sentences
+3. Be objective and technical
+4. Don't make suggestions or recommendations
+5. Don't describe the code structure, focus on functionality
+"""
+
 @app.command()
 def analyze(filenames: List[str]):
     """Get a concise summary of one or more files' purposes."""
-    agent = APIAgent()
-    prompt = """Analyze this file and provide a very concise summary (2-10 sentences max) explaining its main purpose. 
-Focus only on what the file does, without listing components or recommendations."""
+    agent = APIAgent(system_prompt=SYSTEM_PROMPT)
 
     for idx, filename in enumerate(filenames):
         try:
@@ -36,7 +44,7 @@ Focus only on what the file does, without listing components or recommendations.
                 console=console
             ) as progress:
                 progress.add_task(f"[blue]Analyzing {filename}[/blue]...", total=None)
-                summary = agent.process_file(filename, prompt)
+                summary = agent.analyze_file(filename)
             
             console.print()
             console.print(Panel(

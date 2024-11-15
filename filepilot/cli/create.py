@@ -8,6 +8,15 @@ from ..claude import APIAgent
 from . import console, app
 from typing import Optional, List
 
+SYSTEM_PROMPT = """You are a software developer who creates new files based on user requirements.
+Provide your output using a consistent XML format.
+
+Important:
+1. Always output content within XML tags
+2. Keep content separate from tags
+3. Be concise and clear
+"""
+
 @app.command()
 def create(
     filename: str, 
@@ -17,13 +26,16 @@ def create(
 ):
     """Create a new file using AI-generated content based on description."""
     try:
-        if os.path.exists(filename) and not force:
-            if not Confirm.ask(f"File '{filename}' already exists. Overwrite?"):
+        # Check for existing file early and exit if needed
+        if os.path.exists(filename):
+            if not force:
+                console.print(f"[red]Error:[/red] File '{filename}' already exists. Use --force to overwrite.")
                 raise typer.Exit(1)
+            console.print(f"[yellow]Warning:[/yellow] Overwriting existing file '{filename}'")
 
         os.makedirs(os.path.dirname(os.path.abspath(filename)), exist_ok=True)
             
-        agent = APIAgent()
+        agent = APIAgent(system_prompt=SYSTEM_PROMPT)
         valid_reference_files = []
         
         # Validate reference files exist and are not directories
@@ -37,12 +49,15 @@ def create(
                     continue
                 valid_reference_files.append(ref_file)
 
-        # Show reference files that will be used
+        # Read reference files content
+        reference_contents = {}
         if valid_reference_files:
             console.print("\n[blue]Using reference files:[/blue]")
             for ref_file in valid_reference_files:
                 ref_size = os.path.getsize(ref_file) / 1024  # Size in KB
                 console.print(f"  • [cyan]{ref_file}[/cyan] ({ref_size:.1f} KB)")
+                with open(ref_file, 'r', encoding='utf-8') as f:
+                    reference_contents[ref_file] = f.read()
             console.print()
         
         with Progress(
@@ -52,8 +67,10 @@ def create(
         ) as progress:
             task = progress.add_task(f"[blue]Generating content for {filename}[/blue]...", total=None)
             content = agent.create_file_content(
-                description=f"Create file '{filename}': {description}",
-                reference_files=valid_reference_files
+                instruction=description,
+                filename=filename,
+                description=description,
+                reference_files=reference_contents
             )
             progress.update(task, completed=True)
         
