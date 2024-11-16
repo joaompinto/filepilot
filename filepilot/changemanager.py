@@ -1,7 +1,9 @@
 import os
 import shutil
 import re
+import xml.etree.ElementTree as ET
 from datetime import datetime
+from pathlib import Path
 from tempfile import NamedTemporaryFile
 from rich.console import Console
 from rich.prompt import Confirm
@@ -23,11 +25,11 @@ class ChangeManager:
 
     def read_file(self, filename: str) -> str:
         """Read and validate file content."""
-        if not os.path.exists(filename):
+        path = Path(filename)
+        if not path.exists():
             raise FileNotFoundError(f"File '{filename}' does not exist")
             
-        with open(filename, 'r', encoding='utf-8') as f:
-            return f.read()
+        return path.read_text(encoding='utf-8')
     
     def create_preview_with_content(self, original_file: str, content: str) -> str:
         """Create preview file with given content."""
@@ -50,6 +52,24 @@ class ChangeManager:
         shutil.copy2(original_file, preview_path)
         
         return preview_path
+
+    def create_preview_dir(self, dirname: str) -> str:
+        """Create a preview directory for directory structure operations."""
+        self.original_file = dirname
+        path = Path(dirname)
+        
+        # Create temporary directory with unique name
+        temp_file = NamedTemporaryFile(
+            prefix=f"{path.name}_",
+            suffix="_preview",
+            delete=False
+        )
+        preview_dir = temp_file.name
+        temp_file.close()  # Close and remove the temp file
+        Path(preview_dir).unlink(missing_ok=True)  # Remove the file if it exists
+        Path(preview_dir).mkdir(parents=True, exist_ok=True)  # Create as directory
+        
+        return preview_dir
 
     def show_diff(self, original_file: str, preview_file: str) -> int:
         """Show visual diff between original and preview files.
@@ -74,11 +94,32 @@ class ChangeManager:
             self.console.print(f"[green]✓ Changes applied to {original_file}[/green]")
         return True
 
+    def apply_dir_changes(self, target_dir: str, preview_dir: str) -> bool:
+        """Apply changes from preview directory to target directory."""
+        if self.verbose:
+            self.console.print("\n[bold]Applying directory changes:[/bold]")
+            self.console.print(f"Source: {preview_dir}")
+            self.console.print(f"Destination: {target_dir}")
+
+        target_path = Path(target_dir)
+        if target_path.exists():
+            shutil.rmtree(target_path)
+        
+        # Copy entire directory structure
+        shutil.copytree(preview_dir, target_dir)
+
+        if self.verbose:
+            self.console.print("[green]Directory structure applied successfully[/green]")
+        else:
+            self.console.print(f"[green]✓ Directory structure created at[/green] [cyan]{target_dir}[/cyan]")
+        return True
+
     def cleanup_preview(self, preview_file: str):
         """Clean up preview file if it exists."""
-        if preview_file and os.path.exists(preview_file):
+        path = Path(preview_file)
+        if preview_file and path.exists():
             try:
-                os.unlink(preview_file)
+                path.unlink()
             except OSError:
                 pass  # Ignore errors during cleanup
 
@@ -224,6 +265,7 @@ Please make the following changes:
                 if filename and content_lines:
                     instructions.append({
                         'action': 'replace',
+                        'filename': filename,  # Include filename in instructions
                         'content': '\n'.join(content_lines)
                     })
                 in_file_section = False
@@ -256,8 +298,92 @@ Please make the following changes:
             self.console.print("\n[bold]Parsed Instructions:[/bold]")
             for instr in instructions:
                 self.console.print(f"\n[yellow]Action:[/yellow] {instr['action']}")
+                self.console.print(f"[cyan]File:[/cyan] {instr['filename']}")
                 self.console.print("[green]New content:[/green]")
                 for line in instr['content'].splitlines():
                     self.console.print(f"[green]+ {line}[/green]")
 
         return instructions
+
+    def parse_directory_structure(self, xml_content: str) -> dict:
+        """Parse XML directory structure into a dictionary representation."""
+        structure = {'dirs': [], 'files': []}
+        in_structure = False
+        in_dir = False
+        in_file = False
+        current_dir = None
+        content_lines = []
+        
+        for line in xml_content.splitlines():
+            stripped_line = line.strip()
+            
+            if '<structure>' in stripped_line:
+                in_structure = True
+                continue
+            elif '</structure>' in stripped_line:
+                in_structure = False
+                continue
+                
+            if not in_structure:
+                continue
+                
+            if '<dir name="' in stripped_line:
+                in_dir = True
+                dir_name = stripped_line[stripped_line.find('name="')+6:stripped_line.find('">')].strip()
+                current_dir = {'name': dir_name, 'dirs': [], 'files': []}
+                continue
+            elif '</dir>' in stripped_line:
+                if current_dir:
+                    structure['dirs'].append(current_dir)
+                    current_dir = None
+                in_dir = False
+                continue
+                
+            if '<file name="' in stripped_line:
+                in_file = True
+                file_name = stripped_line[stripped_line.find('name="')+6:stripped_line.find('">')]
+                content_lines = []
+                continue
+            elif '</file>' in stripped_line:
+                if current_dir:
+                    current_dir['files'].append({
+                        'name': file_name,
+                        'content': '\n'.join(content_lines)
+                    })
+                else:
+                    structure['files'].append({
+                        'name': file_name,
+                        'content': '\n'.join(content_lines)
+                    })
+                in_file = False
+                continue
+                
+            if in_file:
+                content_lines.append(line)
+                
+        return structure
+        
+    def create_directory_structure(self, root_dir: str, structure: dict) -> None:
+        """Recursively create directory structure from dictionary representation."""
+        root_path = Path(root_dir)
+        
+        # Create top-level files
+        for file_info in structure['files']:
+            file_path = root_path / file_info['name']
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            file_path.write_text(file_info['content'], encoding='utf-8')
+                
+        # Create directories and their contents
+        for dir_info in structure['dirs']:
+            dir_path = root_path / dir_info['name']
+            dir_path.mkdir(parents=True, exist_ok=True)
+            self.create_directory_structure(str(dir_path), dir_info)
+
+    def preview_directory_tree(self, path: Path, tree_node) -> None:
+        """Build a rich Tree preview of directory structure."""
+        for item in sorted(path.iterdir()):
+            if item.is_dir():
+                branch = tree_node.add(f"[bold cyan]{item.name}/[/bold cyan]")
+                self.preview_directory_tree(item, branch)
+            else:
+                tree_node.add(f"[green]{item.name}[/green]")

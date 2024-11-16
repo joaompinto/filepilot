@@ -1,6 +1,5 @@
 # Filepilot Release Process
 
-![Demo](./recording.svg)
 
 This document describes how to release a new version of Filepilot to PyPI.
 

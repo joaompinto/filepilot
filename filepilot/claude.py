@@ -21,7 +21,12 @@ class APIAgent:
     def request(self, prompt: str, max_tokens: int = 4000) -> str:
         """Send a request to Claude API and get the response."""
         if VERBOSE:
-            console.print("\n[yellow]Prompt sent to Claude:[/yellow]")
+            if self.system_prompt:
+                console.print("\n[yellow]System Prompt:[/yellow]")
+                console.print("=" * 80)
+                console.print(self.system_prompt)
+                console.print("=" * 80)
+            console.print("\n[yellow]User Prompt:[/yellow]")
             console.print("=" * 80)
             console.print(prompt)
             console.print("=" * 80)

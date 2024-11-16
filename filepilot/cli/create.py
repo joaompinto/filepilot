@@ -22,7 +22,8 @@ def create(
     filename: str, 
     description: str,
     reference_files: List[str] = typer.Argument(None, help="Additional reference files"),
-    force: bool = typer.Option(False, "--force", help="Force overwrite if file exists")
+    force: bool = typer.Option(False, "--force", help="Force overwrite if file exists"),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Automatically create file without prompting")
 ):
     """Create a new file using AI-generated content based on description."""
     try:
@@ -78,8 +79,8 @@ def create(
         console.print("\n[blue]Generated content:[/blue]")
         console.print(Panel(content, title=filename, expand=False))
         
-        # Prompt for confirmation
-        if not Confirm.ask("\nCreate file with this content?"):
+        # Prompt for confirmation unless --yes flag is used
+        if not yes and not Confirm.ask("\nCreate file with this content?"):
             console.print("[yellow]Operation cancelled by user[/yellow]")
             raise typer.Exit(0)
 
