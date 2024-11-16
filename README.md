@@ -1,4 +1,6 @@
-Here is a README file with helpful icons for the Filepilot project:
+
+
+
 
 # Filepilot 🚀✨
 
@@ -7,6 +9,9 @@ Here is a README file with helpful icons for the Filepilot project:
 [![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)]()
 
 Filepilot is an AI-powered tool for creating, analyzing, and modifying files using Natural Language Processing (NLP). It provides a command-line interface (CLI) for interacting with Anthropic's Claude AI assistant using the Claude-3-5-Sonnet model, leveraging its capabilities to generate file content, analyze existing files, and apply edits based on natural language instructions.
+
+## Demo
+![Demo](./recording.svg)
 
 ## Features ✨
 
