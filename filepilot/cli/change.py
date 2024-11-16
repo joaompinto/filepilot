@@ -2,6 +2,7 @@ import os
 import typer
 import traceback
 from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.prompt import Confirm
 from ..claude import APIAgent
 from ..changemanager import ChangeManager, NoChangesFoundError
 from . import console, app
@@ -28,7 +29,8 @@ Important:
 def change(
     filename: str, 
     instruction: str,
-    diff: bool = typer.Option(False, "--diff", "-d", help="Only show diff without applying changes")
+    diff: bool = typer.Option(False, "--diff", "-d", help="Only show diff without applying changes"),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Automatically apply changes without prompting")
 ):
     """Modify an existing file based on the given instruction."""
     try:
@@ -61,7 +63,12 @@ def change(
                     diff_count = change_manager.show_diff(filename, preview_file)
                     if diff_count > 0:
                         if not diff:
-                            change_manager.apply_changes(filename, preview_file)
+                            if yes:
+                                change_manager.apply_changes(filename, preview_file)
+                            else:
+                                console.print("")
+                                if Confirm.ask("[bold yellow]Do you want to apply these changes? [y/N]:[/bold yellow]", console=console):
+                                    change_manager.apply_changes(filename, preview_file)
                     else:
                         console.print("[yellow]No changes needed[/yellow]")
                 finally:

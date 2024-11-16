@@ -4,6 +4,8 @@ setup(
     name="filepilot",
     version="0.1.0",
     description="AI-powered tool for creating, analyzing, and modifying files using natural language",
+    long_description=open("README.md").read(),
+    long_description_content_type="text/markdown",
     author="João Pinto",
     packages=find_packages(),
     package_data={

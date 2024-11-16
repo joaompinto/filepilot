@@ -60,23 +60,19 @@ class ChangeManager:
         return self.visual_diff.visualize_diff(original_file, preview_file)
 
     def apply_changes(self, original_file: str, preview_file: str) -> bool:
-        """Apply changes from preview to original file if confirmed."""
-        if Confirm.ask("\nDo you want to apply these changes?", console=self.console):
-            if self.verbose:
-                self.console.print("\n[bold]Applying changes:[/bold]")
-                self.console.print(f"Source: {preview_file}")
-                self.console.print(f"Destination: {original_file}")
+        """Apply changes from preview to original file."""
+        if self.verbose:
+            self.console.print("\n[bold]Applying changes:[/bold]")
+            self.console.print(f"Source: {preview_file}")
+            self.console.print(f"Destination: {original_file}")
 
-            shutil.copy2(preview_file, original_file)
+        shutil.copy2(preview_file, original_file)
 
-            if self.verbose:
-                self.console.print("[green]Changes applied successfully[/green]")
-            else:
-                self.console.print(f"[green]✓ Changes applied to {original_file}[/green]")
-            return True
+        if self.verbose:
+            self.console.print("[green]Changes applied successfully[/green]")
         else:
-            self.console.print("[yellow]Changes discarded[/yellow]")
-            return False
+            self.console.print(f"[green]✓ Changes applied to {original_file}[/green]")
+        return True
 
     def cleanup_preview(self, preview_file: str):
         """Clean up preview file if it exists."""

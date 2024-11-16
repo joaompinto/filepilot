@@ -74,6 +74,15 @@ def create(
             )
             progress.update(task, completed=True)
         
+        # Show the generated content in a panel
+        console.print("\n[blue]Generated content:[/blue]")
+        console.print(Panel(content, title=filename, expand=False))
+        
+        # Prompt for confirmation
+        if not Confirm.ask("\nCreate file with this content?"):
+            console.print("[yellow]Operation cancelled by user[/yellow]")
+            raise typer.Exit(0)
+
         with open(filename, 'w', encoding='utf-8') as f:
             f.write(content)
         
