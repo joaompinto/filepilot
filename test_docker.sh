@@ -22,7 +22,7 @@ docker run -it --rm -v $(pwd):/app -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY filep
 docker run -it --rm -v $(pwd):/app -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY filepilot filepilot create -y /tmp/test.txt "A simple text file with hello world content" --force
 
 # Test create with reference files and -y
-docker run -it --rm -v $(pwd):/app -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY filepilot filepilot create -y /tmp/new_script.py "A python script that prints hello" test.txt --force
+docker run -it --rm -v $(pwd):/app -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY filepilot filepilot create -y /tmp/new_script.py "A python script that prints hello" /etc/hosts --force
 
 # Test createdir command with -y
 docker run -it --rm -v $(pwd):/app -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY filepilot filepilot createdir -y /tmp/testproject "A simple python project with a main file and a utility module" --force

@@ -46,6 +46,9 @@ filepilot create app.py "Create a Flask web application with a home route"
 # Create a directory structure
 filepilot createdir webapp "A web application with templates and routes"
 
+# Change directory and create a new file
+filepilot changedir src "Create a new file in the src directory"
+
 # Analyze files
 filepilot analyze app.py config.py
 

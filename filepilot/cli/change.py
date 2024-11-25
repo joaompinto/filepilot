@@ -6,6 +6,7 @@ from rich.prompt import Confirm
 from ..claude import APIAgent
 from ..changemanager import ChangeManager, NoChangesFoundError
 from . import console, app
+from ..syntaxdiff import create_syntax_diff
 
 SYSTEM_PROMPT = """You are a software developer. Process a request for changes to files using this format:
 
@@ -60,8 +61,9 @@ def change(
                 preview_file = change_manager.create_preview_with_content(filename, modified_content)
                 
                 try:
-                    diff_count = change_manager.show_diff(filename, preview_file)
+                    diff_count, diff_output = create_syntax_diff(filename, preview_file)
                     if diff_count > 0:
+                        console.print(diff_output)
                         if not diff:
                             if yes:
                                 change_manager.apply_changes(filename, preview_file)

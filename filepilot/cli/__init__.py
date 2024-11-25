@@ -16,5 +16,6 @@ from .change import change
 from .status import status
 from .update import update
 from .createdir import createdir
+from .changedir import changedir
 
-__all__ = ['app', 'console', 'analyze', 'create', 'change', 'status', 'update', 'createdir']
+__all__ = ['app', 'console', 'analyze', 'create', 'change', 'status', 'update', 'createdir', 'changedir']

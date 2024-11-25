@@ -20,7 +20,8 @@ setup(
         'filepilot': [
             'py.typed',
             '*.py',
-            'cli/*.py'
+            'cli/*.py',
+            '../version.txt'  # Add version.txt
         ]
     },
     install_requires=[

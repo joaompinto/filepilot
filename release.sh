@@ -1,14 +1,26 @@
 #!/bin/bash
 set -e  # Exit on error
 
+# Parse arguments
+SKIP_TESTS=false
+for arg in "$@"; do
+    if [ "$arg" = "--skip-tests" ]; then
+        SKIP_TESTS=true
+    fi
+done
+
 # Check if ANTHROPIC_API_KEY is set
 if [ -z "$ANTHROPIC_API_KEY" ]; then
     echo "Error: ANTHROPIC_API_KEY environment variable is not set"
     exit 1
 fi
 
-echo "Running docker tests..."
-./test_docker.sh
+if [ "$SKIP_TESTS" = false ]; then
+    echo "Running docker tests..."
+    sh ./test_docker.sh
+else
+    echo "Skipping tests..."
+fi
 
 echo "Cleaning up old distributions..."
 rm -rf dist/ build/ *.egg-info
